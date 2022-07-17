@@ -1,19 +1,19 @@
 import { ParseError } from "../errors/parse-error.ts";
 
-export interface HtmlElement {
+export interface AquaElement {
   start: number;
   end: number;
   type: string;
   data: string;
-  children: HtmlElement[];
+  children: AquaElement[];
 }
 
 export class Parser {
   pointer: number;
-  stack: HtmlElement[];
+  stack: AquaElement[];
   template: string;
 
-  html: HtmlElement;
+  html: AquaElement;
 
   css: null;
 
@@ -27,13 +27,13 @@ export class Parser {
       start: 0,
       data: "",
       end: 0,
-      type: "Fragment",
+      type: "tag",
       children: [],
     };
 
     this.css = null, this.js = null;
   }
-  get current(): HtmlElement {
+  get current(): AquaElement {
     return this.stack[this.stack.length - 1];
   }
   error(message: string, index = this.pointer) {

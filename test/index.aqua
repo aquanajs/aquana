@@ -1,0 +1,12 @@
+<template>
+    <div class = "min-h-100vh bg-#ff00c3 p-8rem">
+        <div class = "align-center">
+            This is a very WIP {{a}}.
+        </div>
+    </div>
+</template>
+<script>
+
+let a = "framework"
+
+</script>
