@@ -1,82 +1,59 @@
-import { ParseError } from "../errors/parse-error.ts";
+import { Parser } from "./parse/parse/parser.ts";
 
-export interface AquaElement {
-  start: number;
-  end: number;
-  type: string;
-  data: string;
+interface AquaElement {
+  name: string;
   children: AquaElement[];
+  startIndex: number;
+  type: "aqua" | "html" | "text";
+  data: string | Record<string, string>;
+  endIndex: number | null;
 }
 
-export class Parser {
-  pointer: number;
-  stack: AquaElement[];
-  template: string;
+export function parse(template: string) {
+  const parser = new Parser<AquaElement>(template);
 
-  html: AquaElement;
+  while (parser.remaining()) {
+    if (parser.match("<")) {
+      // Parse as a html tag
+      parseHTML(parser);
+    } else if (parser.match("{{")) {
+      // Parse as a template tag
+      parseAqua(parser);
+    } else parseText(parser); // Parse as plain text
+  }
+  if (parser.current.endIndex === null) {
+    parser.error(
+      `Unterminated ${parser.current.type} (name: ${parser.current.name})`,
+      parser.current.startIndex,
+    );
+  }
+}
 
-  css: null;
+function parseHTML(parser: Parser<AquaElement>) {}
+function parseAqua(parser: Parser<AquaElement>) {}
 
-  js: null;
-  constructor(template: string) {
-    this.pointer = 0;
-    this.stack = [];
-    this.template = template;
+function parseText(parser: Parser<AquaElement>) {
+  const start = parser.pointer;
 
-    this.html = {
-      start: 0,
-      data: "",
-      end: 0,
-      type: "tag",
-      children: [],
-    };
+  let textData = "";
 
-    this.css = null, this.js = null;
+  while (
+    parser.pointer < parser.template.length && !parser.match("<") &&
+    !parser.match("{{")
+  ) {
+    textData += parser.template[parser.pointer++];
   }
-  get current(): AquaElement {
-    return this.stack[this.stack.length - 1];
-  }
-  error(message: string, index = this.pointer) {
-    throw new ParseError(message, this.template, index);
-  }
-  match(val: string): boolean {
-    return this.template.slice(
-      this.pointer,
-      this.pointer + val.length,
-    ) === val;
-  }
-  /**
-   * Move the pointer ahead of the `val` string.
-   * @param {string} val Value to move ahead of.
-   * @returns {boolean} Whether the movement was successful.
-   */
-  move(val: string, required = false): boolean {
-    if (this.match(val)) {
-      this.pointer += val.length;
-      return true;
-    }
-    if (required) this.error(`${val} is required at position ${this.pointer}.`);
-    return false;
-  }
-  read(pattern: RegExp): string {
-    const matches = pattern.exec(this.template.slice(this.pointer));
-    if (!matches || matches.index !== 0) return "";
 
-    this.pointer += matches[0].length;
+  const textElement: AquaElement = {
+    name: "text_node",
+    children: [],
+    startIndex: start,
+    endIndex: parser.pointer,
+    type: "text",
+    data: textData,
+  };
 
-    return matches[0];
-  }
-  requireWhitespace(): boolean {
-    if(!this.move(" ")) this.error( `Expected whitespace` );
-    this.skipWhitespace();
-    return true;
-  }
-  skipWhitespace() {
-    while (
-      this.pointer < this.template.length &&
-      /\s/.test(this.template[this.pointer])
-    ) {
-      this.pointer++;
-    }
-  }
+  if (parser.current.endIndex === null) {
+    parser.current.children.push(textElement);
+  } else parser.stack.push(textElement);
 }
